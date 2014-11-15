@@ -1,0 +1,176 @@
+<!--
+Analog Clock
+Copyright 2014, Mike Pacer
+Released under the BSD License.
+Display an analog clock using canvas.
+
+Based off of
+The Analog Clock tutorial at:
+http://www.kirupa.com/html5/create_an_analog_clock_using_the_canvas.htm
+
+CoolClock 2.1.4
+http:// JS:randomibis.com/coolclock/
+
+Thanks to:
+
+Luke Maurits
+http://www.luke.maurits.id.au/
+
+Jordan Suchow
+http://suchow.io
+
+Jess Hamrick
+http://www.jesshamrick.com/
+
+For inspiration, motivation and help.
+-->
+
+
+<!DOCTYPE html>
+<html>
+<head>
+<title>Analog Clock</title>
+<style>
+#current-time {
+    display: block;
+    font-weight: bold;
+    text-align: center;
+    width: 200px;
+    padding: 10px;
+    border:1px dotted#3F3F3F;
+    border-radius: 40%;
+}
+
+#clock {
+    padding: 10px;
+    border: 1px solid #000000;
+    border-radius:120px ;
+}
+
+</style>
+</head>
+
+<body>
+<div id="current-time">12:00:00 AM</div>
+<canvas id="clock" width="200" height="200">
+    If you can see this message, your browser does not support canvas and needs an update. Sorry. :(
+</canvas>
+
+<script>
+//this is what calls the function. Because it only happens once the clock is only drawn when the page loads
+
+Date.prototype.betterDays = function (){
+
+    // ISO week date weeks start on monday
+    // so correct the day number
+    // MDP: Note also that (Monday == 1) ⟹ True
+        return (((this.getDay()+6)%7)+1);
+    }
+
+Date.prototype.getWeek = function () {
+    // MDP: this function modified from http://techblog.procurios.nl/k/news/view/33796/14863/calculate-iso-8601-week-and-year-in-javascript.html%E2%9F%B9
+    // The function will calculate the difference in weeks between the first thursday of the year (always week #1) and the thursday in the target week. To do this it will first create a new date object called target and change it so it points at the thursday in the target week. The millisecond value of that date object is then stored. Next, the first thursday of the year is found and the difference in weeks between these two thursdays, plus one, is returned. Because of the ceil any daylight saving differences are ignored.
+
+    // Create a copy of this date object
+    var target  = new Date(this.valueOf());
+
+    // ISO 8601 states that week 1 is the week with the first thursday of that year.
+    // Set the target date to the thursday in the target week
+    // MDP: You do this by first finding the date in question, then subtracting to get to the monday of that week, and then moving forward to Thursday (which you'll note is the fourth day of the week.)
+    target.setDate(target.getDate() - this.betterDays()+ 4);
+
+    // Store the millisecond value of the target date
+    var nearbyThursday = target.valueOf();
+
+    // Set the target to the first thursday of the year
+    // First set the target to january first
+    target.setMonth(0, 1);
+    // Not a thursday?
+    if (target.getDay() != 4) {
+        // Correct the date to the next thursday
+        // Do so by going to the first month, jumping forward to the "thursday of the week", moving back however many days you currently are at, and then by renormalizing you end up in the 0 to 6 numbering system, and so you need to reindex by 1
+        target.setMonth(0, ((4 -target.getDay())% 7) + 1);
+    }
+
+    // The weeknumber is the number of weeks between the
+    // first thursday of the year and the thursday in the target week
+    return 1 + Math.ceil((nearbyThursday - target.valueOf()) / 604800000.0); // 604800000 = 7 * 24 * 3600 * 1000
+}
+
+document.addEventListener('DOMContentLoaded', startTimer);
+function startTimer(){
+    setInterval(displayTime,1000);
+    displayTime();
+}
+
+function displayTime() {
+
+
+    var now = new Date();
+    // var now = window.performance.now() // some day this might work, but it doesn't exactly work as a statement about the date so much as a statement about the number of milliseconds, which then would need to be converted into a date
+
+    var h = now.getHours();
+    var m = now.getMinutes();
+    var s = now.getSeconds();
+    var w = now.getWeek();
+    var d = now.betterDays();
+    var y = now.getFullYear();
+    var timeString = String(h) + ":" + padZero(m) + ":" + padZero(s) + "<br>";
+    var timeString2 = String(w) + "·" + String(d) + "·" + String(y);
+    document.querySelector("#current-time").innerHTML = timeString + timeString2;
+    //  Analog clock //
+    var canvas = document.querySelector("#clock");
+    var context = canvas.getContext("2d");
+    var clockRadius = 100;
+    var clockX = canvas.width/2;
+    var clockY = canvas.height/2;
+
+    // math section
+    Math.TAU = 2.0*Math.PI;
+
+    function drawArm(progress,armThickness,armLengthProportion,armColor){
+        // Note that the reason we subtract off 1/4 from tau is that while our normal system for computing polar coordinates is defined with reference to the analogous (1,0) point in cartesian coordinates, we start a clock at the (0,1) point, or 90˚ or τ/4 counter clockwise.
+
+        var armRadians = Math.TAU *(progress-1.0/4.0);
+        var armLength = armLengthProportion*clockRadius;
+
+        var xTarget = clockX + Math.cos(armRadians)*armLength;
+        var yTarget = clockY + Math.sin(armRadians)*armLength;
+
+        // clock drawing
+        context.lineWidth = armThickness;
+        context.strokeStyle = armColor;
+
+        context.beginPath();
+        context.moveTo(clockX, clockY);
+        context.lineTo(xTarget, yTarget);
+        context.stroke();
+    }
+    sProgress = s/60.0
+    mProgress = (m+sProgress)/60.0
+    hProgress = (h+mProgress)/12.0
+
+    context.clearRect(0,0,canvas.height,canvas.width)
+    drawArm(hProgress,10,0.6,"#000000");
+    drawArm(mProgress,7,0.9,"#000000");
+    drawArm(sProgress,3,0.8,"#AE3000");
+}
+
+
+function padZero(num) {
+    if (num<10) {
+        return "0" + String(num);
+    }
+    else {
+        return String(num);
+    }
+}
+function formatHour(h){
+    return String(h%12);
+}
+function getTimePeriod(h){
+    return (h<12) ? "AM" : "PM";
+}
+</script>
+</body>
+</html>
